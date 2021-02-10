@@ -1,2 +1,2 @@
 # laughing-spork
-a simple game using websocket
+a simple game project using websocket.
