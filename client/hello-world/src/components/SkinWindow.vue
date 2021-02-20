@@ -1,6 +1,6 @@
 <template>
   <div></div>
-  <dialog open>
+  <dialog open :class="{ moveCen: move }">
     <!-- <h2>Hello</h2> -->
     <header>
       <h2>Available Skins</h2>
@@ -15,6 +15,7 @@
       >
       </circle-button>
     </section>
+    <!-- <p>{{ move }} : {{ size }}</p> -->
   </dialog>
 </template>
 
@@ -30,11 +31,27 @@ export default {
       this.inputSkin = skin;
       this.finish();
     },
+    handleResize: function () {
+      if (window.innerWidth / 10 > 76.7) {
+        this.move = false;
+      } else {
+        this.move = true;
+      }
+      // this.size = window.innerWidth / 10;
+    },
   },
   data() {
     return {
       inputSkin: this.skin,
+      move: true,
     };
+  },
+  mounted() {
+    window.addEventListener("resize", this.handleResize);
+    this.handleResize();
+  },
+  beforeDestroy() {
+    window.removeEventListener("resize", this.handleResize);
   },
 };
 </script>
@@ -49,6 +66,9 @@ div {
   background-color: rgba(0, 0, 0, 0.75);
   z-index: 10;
 }
+.moveCen {
+  transform: translate(-50%, 0);
+}
 
 dialog {
   position: fixed;
@@ -62,8 +82,8 @@ dialog {
   padding: 0;
   margin: 0;
   overflow: hidden;
-  /* transform: translate(-50%, -50%); */
   min-width: 25rem;
+  /* transform: translate(0, -50%); */
 }
 
 header {

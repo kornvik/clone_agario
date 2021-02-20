@@ -62,7 +62,7 @@ export default {
   },
   created() {
     console.log("Starting connection to WebSocket Server");
-    this.connection = new WebSocket("wss://8209e93cf5d4.ngrok.io/ws/game/");
+    this.connection = new WebSocket("wss://53fe9012709c.ngrok.io/ws/game/");
     // this.connection = new WebSocket("wss://echo.websocket.org");
     this.connection.onmessage = (event) => {
       //   if (this.canvas) console.log(event);
@@ -97,6 +97,9 @@ export default {
       window.onresize = (e) => {
         this.screen_x = Math.floor(window.innerWidth / 2);
         this.screen_y = Math.floor(window.innerHeight / 2);
+        console.log(this.screen_x * 2);
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
       };
       window.onresize();
       window.onkeydown = (e) => {
@@ -145,7 +148,7 @@ export default {
     draw(data) {
       //   const obj = JSON.parse(data);
       //   this.ctx.globalCompositeOpertion = "source-in";
-      this.fix_dpi();
+      // this.fix_dpi();
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       for (const blob in data.blobs) {
         // console.log(data.blobs[blob]);
@@ -179,22 +182,25 @@ export default {
         this.end();
       }
     },
-    fix_dpi() {
-      let style = {
-        height() {
-          return +getComputedStyle(document.getElementById("canvas"))
-            .getPropertyValue("height")
-            .slice(0, -2);
-        },
-        width() {
-          return +getComputedStyle(document.getElementById("canvas"))
-            .getPropertyValue("width")
-            .slice(0, -2);
-        },
-      };
-      this.canvas.setAttribute("width", style.width() * this.dpi);
-      this.canvas.setAttribute("height", style.height() * this.dpi);
-    },
+    // fix_dpi() {
+    //   let style = {
+    //     height() {
+    //       return +getComputedStyle(document.getElementById("canvas"))
+    //         .getPropertyValue("height")
+    //         .slice(0, -2);
+    //     },
+    //     width() {
+    //       return +getComputedStyle(document.getElementById("canvas"))
+    //         .getPropertyValue("width")
+    //         .slice(0, -2);
+    //     },
+    //   };
+    //   this.canvas.setAttribute("width", this.screen_x * this.dpi);
+    //   this.canvas.setAttribute("height", this.screen_y * this.dpi);
+    // },
+  },
+  beforeDestroy() {
+    this.end();
   },
 };
 </script>
@@ -204,11 +210,11 @@ export default {
   position: absolute;
   top: 0;
   left: 0;
-  height: 100vh;
-  width: 100vh;
+  height: 100%;
+  width: 100%;
   background-image: url("../assets/grid.png");
   background-position: center;
-  background-repeat: no-repeat;
+  background-repeat: repeat-x;
   background-size: cover;
   z-index: -1;
 }
