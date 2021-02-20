@@ -50,7 +50,7 @@ export default {
     window.addEventListener("resize", this.handleResize);
     this.handleResize();
   },
-  beforeDestroy() {
+  unmounted() {
     window.removeEventListener("resize", this.handleResize);
   },
 };

@@ -58,11 +58,13 @@ export default {
       screen_x: 0,
       screen_y: 0,
       alive: true,
+      timer: 0,
+      foods: new Map(),
     };
   },
   created() {
     console.log("Starting connection to WebSocket Server");
-    this.connection = new WebSocket("wss://53fe9012709c.ngrok.io/ws/game/");
+    this.connection = new WebSocket("wss://6e7199a27e3d.ngrok.io/ws/game/");
     // this.connection = new WebSocket("wss://echo.websocket.org");
     this.connection.onmessage = (event) => {
       //   if (this.canvas) console.log(event);
@@ -75,7 +77,28 @@ export default {
       //   } else {
       //     console.log("no idea");
       //   }
-      this.draw(JSON.parse(event.data));
+
+      var t0 = performance.now();
+      if (this.timer != 0) {
+        console.log(
+          "Interval between on message " + (t0 - this.timer) + " milliseconds."
+        );
+      }
+      var data = JSON.parse(event.data);
+      if (data.cmd == "players") {
+        this.draw(data.info);
+      } else if (data.cmd == "food-add") {
+        this.addFood(data.info);
+        console.log("food-coming!");
+        console.log(this.foods);
+      } else if (data.cmd == "food-del") {
+        this.delFood(data.info);
+      } else {
+        console.log("no cmd matching! " + data.cmd);
+      }
+      var t1 = performance.now();
+      console.log("Call to draw took " + (t1 - t0) + " milliseconds.");
+      this.timer = t0;
     };
     this.connection.onopen = (event) => {
       //console.log(event);
@@ -113,7 +136,7 @@ export default {
           cmd: "blob_move",
           info: {
             xpos: this.mouse_x,
-            ypos: this.mouse_y,
+            ypos: -this.mouse_y,
             action: this.action,
           },
         };
@@ -150,58 +173,81 @@ export default {
       //   this.ctx.globalCompositeOpertion = "source-in";
       // this.fix_dpi();
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      var me = data.me;
+      if (!me.alive) {
+        this.end();
+      }
+      this.foods.forEach((value) => {
+        // console.log("plotting food" + value);
+        this.plotBlob(
+          this.screen_x + value.xpos - me.ave_xpos,
+          this.screen_y + value.ypos - me.ave_ypos,
+          value.skin
+        );
+      });
+
+      this.score = me.score;
+      for (const blob in me.blobs) {
+        this.plotBlob(
+          this.screen_x + me.blobs[blob].xpos - me.ave_xpos,
+          this.screen_y + me.blobs[blob].ypos - me.ave_ypos,
+          this.skin,
+          me.blobs[blob].radius,
+          this.name
+        );
+        // console.log(me.blobs[blob].ypos + " " + me.ave_ypos);
+      }
+
       for (const blob in data.blobs) {
         // console.log(data.blobs[blob]);
         // console.log(this.screen_x + " " + this.screen_y);
-        this.ctx.beginPath();
-        // score += data.blobs[blob].score;
-        // console.log(data.blobs[blob].xpos + this.screen_x);
-        this.ctx.arc(
-          this.screen_x + data.blobs[blob].xpos,
-          this.screen_y + data.blobs[blob].ypos,
+        this.plotBlob(
+          this.screen_x + data.blobs[blob].xpos - me.ave_xpos,
+          this.screen_y + data.blobs[blob].ypos - me.ave_ypos,
+          data.blobs[blob].skin,
           data.blobs[blob].radius,
-          0,
-          Math.PI * 2,
-          false
+          data.blobs[blob].name
         );
-        this.ctx.font = "15px Helvetica";
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseLine = "middle";
-        this.ctx.fillText(
-          data.blobs[blob].name,
-          this.screen_x + data.blobs[blob].xpos,
-          this.screen_y + data.blobs[blob].ypos
-        );
-        this.ctx.fillStyle = data.blobs[blob].skin;
-        this.ctx.fill();
-        this.ctx.strokeStyle = data.blobs[blob].skin;
-        this.ctx.stroke();
-      }
-      this.score = data.score;
-      if (!data.alive) {
-        this.end();
       }
     },
-    // fix_dpi() {
-    //   let style = {
-    //     height() {
-    //       return +getComputedStyle(document.getElementById("canvas"))
-    //         .getPropertyValue("height")
-    //         .slice(0, -2);
-    //     },
-    //     width() {
-    //       return +getComputedStyle(document.getElementById("canvas"))
-    //         .getPropertyValue("width")
-    //         .slice(0, -2);
-    //     },
-    //   };
-    //   this.canvas.setAttribute("width", this.screen_x * this.dpi);
-    //   this.canvas.setAttribute("height", this.screen_y * this.dpi);
-    // },
+    addFood(data) {
+      // console.log("food" + data.foods);
+      data.foods.forEach((obj) => {
+        // console.log("food " + obj);
+        this.foods.set(obj.id, {
+          xpos: obj.xpos,
+          ypos: obj.ypos,
+          skin: obj.skin,
+        });
+      });
+    },
+    delFood(data) {
+      data.foodsId.forEach((id) => {
+        this.foods.delete(id);
+      });
+    },
+    plotBlob(x, y, skin, radius = "5", name = "") {
+      // console.log("plotting blob" + x + " " + y);
+      this.ctx.beginPath();
+      // score += data.blobs[blob].score;
+      // console.log(data.blobs[blob].xpos + "," + data.blobs[blob].ypos);
+      this.ctx.arc(x, y, radius, 0, Math.PI * 2, false);
+      this.ctx.font = "16px Helvetica";
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseLine = "middle";
+      this.ctx.fillStyle = skin;
+      // this.ctx.strokeStyle = skin;
+      // this.ctx.stroke();
+      this.ctx.fill();
+      this.ctx.beginPath();
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.fillText(name, x, y + 3);
+      this.ctx.fill();
+    },
   },
-  beforeDestroy() {
-    this.end();
-  },
+  // beforeDestroy() {
+  //   this.end();
+  // },
 };
 </script>
 
