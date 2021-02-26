@@ -60,11 +60,17 @@ export default {
       alive: true,
       timer: 0,
       foods: new Map(),
+      theta: 0,
+      prev_x: -999,
+      prev_y: -999,
+      step: 3,
+      px: 0,
+      py: 0,
     };
   },
   created() {
     console.log("Starting connection to WebSocket Server");
-    this.connection = new WebSocket("wss://6e7199a27e3d.ngrok.io/ws/game/");
+    this.connection = new WebSocket("wss://cdd1fb889536.ngrok.io/agar");
     // this.connection = new WebSocket("wss://echo.websocket.org");
     this.connection.onmessage = (event) => {
       //   if (this.canvas) console.log(event);
@@ -86,13 +92,19 @@ export default {
       }
       var data = JSON.parse(event.data);
       if (data.cmd == "players") {
-        this.draw(data.info);
-      } else if (data.cmd == "food-add") {
+        if (this.prev_y != -999) {
+          this.px = (data.info.me.xpos - this.prev_x) / this.step;
+          this.py = (data.info.me.ypos - this.prev_y) / this.step;
+        }
+        // this.prev_x = data.info.me.xpos;
+        // this.prev_y = data.info.me.ypos;
+        this.addFood(data.info.food_add);
+        this.delFood(data.info.food_del);
+        this.draw(data.info, 0);
+      } else if (data.cmd == "init_info") {
         this.addFood(data.info);
         console.log("food-coming!");
         console.log(this.foods);
-      } else if (data.cmd == "food-del") {
-        this.delFood(data.info);
       } else {
         console.log("no cmd matching! " + data.cmd);
       }
@@ -116,6 +128,7 @@ export default {
       window.onmousemove = (e) => {
         this.mouse_x = e.pageX - this.screen_x;
         this.mouse_y = e.pageY - this.screen_y;
+        this.theta = Math.atan2(this.mouse_y, this.mouse_x);
       };
       window.onresize = (e) => {
         this.screen_x = Math.floor(window.innerWidth / 2);
@@ -140,6 +153,7 @@ export default {
             action: this.action,
           },
         };
+        console.log(mouse.info);
         this.sendUser(mouse);
         if (this.action) {
           this.action = false;
@@ -168,61 +182,90 @@ export default {
       this.connection = null;
       this.$emit("end");
     },
-    draw(data) {
+    draw(data, num) {
       //   const obj = JSON.parse(data);
       //   this.ctx.globalCompositeOpertion = "source-in";
       // this.fix_dpi();
+
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      var me = data.me;
-      if (!me.alive) {
+      // var me = data.me;
+      if (!data.me.alive) {
         this.end();
       }
       this.foods.forEach((value) => {
         // console.log("plotting food" + value);
         this.plotBlob(
-          this.screen_x + value.xpos - me.ave_xpos,
-          this.screen_y + value.ypos - me.ave_ypos,
+          this.screen_x + value.xpos - data.me.xpos,
+          this.screen_y - (value.ypos - data.me.ypos),
           value.skin
         );
       });
-
-      this.score = me.score;
-      for (const blob in me.blobs) {
+      // console.log("----------me-----------");
+      // console.log(data.me);
+      this.score = data.me.score;
+      for (const blob in data.me.blobs) {
         this.plotBlob(
-          this.screen_x + me.blobs[blob].xpos - me.ave_xpos,
-          this.screen_y + me.blobs[blob].ypos - me.ave_ypos,
+          this.screen_x + data.me.blobs[blob].xpos - data.me.xpos,
+          this.screen_y - (data.me.blobs[blob].ypos - data.me.ypos),
           this.skin,
-          me.blobs[blob].radius,
+          data.me.blobs[blob].radius,
           this.name
         );
         // console.log(me.blobs[blob].ypos + " " + me.ave_ypos);
       }
 
       for (const blob in data.blobs) {
-        // console.log(data.blobs[blob]);
+        // console.log(dat a.blobs[blob]);
         // console.log(this.screen_x + " " + this.screen_y);
+
         this.plotBlob(
-          this.screen_x + data.blobs[blob].xpos - me.ave_xpos,
-          this.screen_y + data.blobs[blob].ypos - me.ave_ypos,
+          this.screen_x + data.blobs[blob].xpos - data.me.xpos,
+          this.screen_y - (data.blobs[blob].ypos - data.me.ypos),
           data.blobs[blob].skin,
           data.blobs[blob].radius,
           data.blobs[blob].name
         );
       }
+      if (num < this.step) {
+        // const theta = Math.atan2(-this.mouse_y, this.mouse_x);
+        // const step = 3;
+        // const px = step * Math.cos(theta);
+        // const py = step * Math.sin(theta);ep = 3;
+        // const px = step * Math.cos(theta);
+        // const py = step * Math.sin(theta);
+
+        var ave_xpos = 0;
+        var ave_ypos = 0;
+        var num_me = 0;
+        for (const blob in data.me.blobs) {
+          data.me.blobs[blob].xpos += this.px;
+          data.me.blobs[blob].ypos += this.py;
+          ave_xpos += data.me.blobs[blob].xpos;
+          ave_ypos += data.me.blobs[blob].ypos;
+          num_me += 1;
+          // console.log(me.blobs[blob].ypos + " " + me.ave_ypos);
+        }
+        data.me.xpos = ave_xpos / num_me;
+        data.me.ypos = ave_ypos / num_me;
+        setTimeout(this.draw(data, num + 1), 17);
+      } else {
+        this.prev_x = data.me.xpos;
+        this.prev_y = data.me.ypos;
+      }
     },
     addFood(data) {
-      // console.log("food" + data.foods);
-      data.foods.forEach((obj) => {
+      // console.log("food" + data);
+      for (var key in data) {
         // console.log("food " + obj);
-        this.foods.set(obj.id, {
-          xpos: obj.xpos,
-          ypos: obj.ypos,
-          skin: obj.skin,
+        this.foods.set(key, {
+          xpos: data[key].xpos,
+          ypos: data[key].ypos,
+          skin: data[key].skin,
         });
-      });
+      }
     },
     delFood(data) {
-      data.foodsId.forEach((id) => {
+      data.forEach((id) => {
         this.foods.delete(id);
       });
     },
