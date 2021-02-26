@@ -1,0 +1,152 @@
+<html>
+  <head>
+    <title>Agar Game</title>
+  </head>
+  <body>
+    <div>
+      <table>
+	<td>
+	  <tr><canvas id="mycanvas" width="1000" height="500" style="border:solid 2px"></canvas></tr>
+	</td>
+	<td>
+	  <tr>Score: <span id="score"></span></tr>
+	</td>
+      </table>
+    </div>
+    <div>
+      <table>
+	<tr>
+	  <td>Username</td>
+	  <td><input id="uname" type="text" value="Test"></input></td>
+	</tr>
+	<tr>
+	  <td>Skin</td>
+	  <td><input id="skin" type="text" value="#f59b42"></input></td>
+	</tr>
+	<tr>
+	  <td><button onclick="join_game()" id="join">Join</button></td>
+	</tr>
+      </table>
+    </div>
+    <script>
+      var WIDTH = 1000;
+      var HEIGHT = 500;
+      var currX,currY;
+      var xc = WIDTH/2, yc = HEIGHT/2;
+      
+      var ctx = document.getElementById("mycanvas").getContext("2d");
+      var ws = new WebSocket("wss://" + document.domain + "/agar");
+
+      //console.log(ws);
+
+      var score = document.getElementById("score");
+      
+      var food = {};
+
+      
+      ws.onmessage = (data)=>{
+	  //console.log(data);
+	  data = JSON.parse(data["data"]);
+	  if(data["cmd"] == "players"){
+	      var info  = data["info"];
+	      var food_add = info["food_add"];
+	      var food_del = info["food_del"];
+	      var blobs = info["blobs"];
+	      var me = info["me"];
+	      var me_blobs = me["blobs"];
+	      var refx = me["xpos"];
+	      var refy = me["ypos"];
+
+	      if (me["alive"] || true){
+		  console.log(food_add);
+		  for(var i in food_add){
+		      food[i] = food_add[i];
+		  }
+		  for(var i in food_del){
+		      delete food[food_del[i]];
+		  }
+		  clear_canvas(ctx);
+		  draw_food(ctx,me["xpos"],me["ypos"],10);
+		  draw_blobs(ctx,blobs,refx,refy);
+		  draw_blobs(ctx,me_blobs,refx,refy);
+		  score.innerText = me["score"];
+	      }
+	  }
+	  else if(data["cmd"] == "init_info"){
+	      food = data["info"]["food"];
+	  }
+      }
+
+      document.onmousemove = (evt) => {
+	  currX = evt.clientX;
+	  currY = evt.clientY;
+      };
+
+      document.onkeydown = (evt) => {
+	  //console.log(evt["key"]);
+	  if(evt["key"] == " "){
+	      var response = {"cmd":"blob_move"};
+	      response["info"] = {
+		  "xpos" : (currX - xc),
+		  "ypos" : (yc - currY),
+		  "action" : true
+	      };
+	      ws.send(JSON.stringify(response));
+	  }
+      }
+
+      function send_data(){
+	  var response = {"cmd":"blob_move"};
+	  response["info"] = {
+	      "xpos" : (currX - xc),
+	      "ypos" : (yc - currY),
+	      "action" : false
+	  };
+	  console.log(response);
+	  ws.send(JSON.stringify(response));
+      }
+
+      function join_game(){
+	  var uname = document.getElementById("uname").value;
+	  var skin = document.getElementById("skin").value;
+	  
+	  var info = {"name":uname,"skin":skin}
+	  ws.send(JSON.stringify({"cmd":"join_room",info}));
+	  var b = document.getElementById("join");
+	  b.disabled = true;
+	  setInterval(send_data,200);
+      }
+
+      function clear_canvas(ctx){
+	  ctx.beginPath();
+	  ctx.rect(0,0,WIDTH,HEIGHT);
+	  ctx.fillStyle = "#FFFFFF";
+	  ctx.fill();
+	  ctx.closePath();
+      }
+      
+      function draw_circle(ctx,x,y,r,color){
+	  ctx.beginPath();
+	  ctx.arc(x,y,r,0,2*Math.PI);
+	  ctx.lineWidth = 2;
+	  ctx.stroke();
+	  ctx.fillStyle = color;
+	  ctx.fill();
+	  ctx.closePath();
+      }
+
+      function draw_food(ctx,refx,refy){
+	  for(var i in food){
+	      draw_circle(ctx,xc + food[i]["xpos"] - refx, yc + refy - food[i]["ypos"],10,food[i]["skin"]);
+	  }
+      }
+
+      function draw_blobs(ctx,blobs,refx,refy){
+	  for(var i in blobs){
+	      draw_circle(ctx,xc + blobs[i]["xpos"] - refx, yc + refy - blobs[i]["ypos"], blobs[i]["radius"], blobs[i]["skin"]); 
+	  }
+      }
+
+    </script>
+  </body>
+</html>
