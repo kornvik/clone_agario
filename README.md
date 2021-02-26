@@ -1,4 +1,4 @@
-# agar-io-clone
+# Agar-IO-Clone
 
 A simple Agar.io clone built with websocket on top of django and HTML5 Canvas on top of VueJS.
 
@@ -15,7 +15,7 @@ A simple Agar.io clone built with websocket on top of django and HTML5 Canvas on
 ![Menu](./img/menu.png)
 ![Game Image](./img/gameplay.png)
 
-## require
+## Requirement
 
 ### To run the program
 
