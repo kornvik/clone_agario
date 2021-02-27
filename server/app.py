@@ -1,5 +1,6 @@
 import time
 from flask import Flask, render_template, request
+from ngrok_utils import start_ngrok
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 import json
@@ -12,6 +13,8 @@ app = Flask(__name__)
 players = {}
 game = None
 stop_game = False
+
+PORT = 6500
 
 class GameThread(threading.Thread):
     def __init__(self,game_env=None):
@@ -105,5 +108,6 @@ def agar():
     return "finish game"
 
 if __name__ == "__main__":
-    server = WSGIServer(("127.0.0.1",6500),app,handler_class=WebSocketHandler)
+    start_ngrok(PORT)
+    server = WSGIServer(("127.0.0.1",PORT),app,handler_class=WebSocketHandler)
     server.serve_forever()
